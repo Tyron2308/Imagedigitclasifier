@@ -1,0 +1,117 @@
+---
+
+- name: Install spark url
+  get_url:
+          url: http://d3kbcqa49mib13.cloudfront.net/{{spark.spark_package}}.tgz
+          dest: /usr/local/lib/
+  register: spark_installed
+  become: true
+  become_user: root
+  ignore_errors: true
+
+- name : untar hadoop tarball
+  unarchive:
+        src: "/usr/local/lib/{{ spark.spark_package }}.tgz"
+        dest: "/usr/local/lib/"
+        copy: no
+        owner: "{{ ansible_ssh_user }}"
+        group: "{{ ansible_ssh_user }}"
+  become: true
+  become_user: root
+
+- name: create spark-env.sh from template
+  copy:
+          src: "{{ common.path_framwork }}/{{ spark.spark_package }}/conf/spark-env.sh.template"
+          dest: "{{ common.path_framwork }}/{{ spark.spark_package }}/conf/spark-env.sh"
+          remote_src: yes
+
+- name : update spark-env.sh
+  lineinfile:
+          dest: "{{ common.path_framwork }}/{{ spark.spark_package }}/conf/spark-env.sh"
+          line: "{{ item }}"
+          regexp: "#!/usr/bin/env bash"
+          state: present
+          owner: "{{ ansible_ssh_user }}"
+  with_items:
+    - "export MESOS_NATIVE_LIBRARY={{ mesos.configuration.lib_location }}"
+    - "export SPARK_EXECUTOR_URI=hdfs://{{groups['mesos_masters'][0]}}/{{spark.spark_package}}.tgz"
+    - "export MASTER=mesos://{{groups['mesos_masters'][0]}}:5050"
+  become: true
+  become_user: root
+ 
+- name : export environment variable
+  block:
+          - lineinfile:
+                dest: /home/{{ ansible_ssh_user }}/.bashrc
+                line: "{{item}}"
+                insertafter: EOF
+                state: present
+                owner: "{{ ansible_ssh_user }}"
+            with_items:
+                - "export SPARK_HOME=/usr/local/lib/{{ spark.spark_package }}"
+                - "export PATH=$PATH:$SPARK_HOME/sbin"
+                - "export PATH=$PATH:$SPARK_HOME/bin"
+          - shell: . /home/{{ ansible_ssh_user }}/.bashrc
+            args:
+                executable: /bin/bash
+  become: true
+  become_user: root
+
+- name: Install scala
+  apt:
+        name: scala
+  become: true
+  become_user: root
+
+- name: Install sbt
+  apt_repository:
+      repo: deb https://dl.bintray.com/sbt/debian / 
+      state: present
+      filename: "sbt"
+      update_cache: yes
+  become: true
+  become_user: root
+
+- name: install sbt
+  apt: 
+        name: sbt
+        update_cache: yes
+        state: present
+        allow_unauthenticated: yes
+        force: yes
+  become: true
+  become_user: root
+
+- name: sbt need bc..bruh
+  apt:
+          name: bc
+  become: true
+  become_user: root
+
+  #- name: configuration spark-default.sh
+  #template:
+  #  src: spark-defaults.conf.j2
+  #  dest: /usr/local/lib/{{ spark.spark_package }}/conf/spark-defaults.conf
+  #  owner: "{{ ansible_ssh_user }}"
+  #  mode: 0644
+  #become: true
+  #become_user: root
+
+- name: configuration spark-env.conf
+  template:
+    src: spark-env.sh.j2
+    dest: /usr/local/lib/{{spark.spark_package}}/conf/spark-env.sh
+    owner: "{{ ansible_ssh_user }}"
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: add source.scala to spark-class with good configuration
+  template:
+    src: sparktest.scala
+    dest: /home/ubuntu/clustertest/spar-class-test/src/main/scala/
+    owner: "{{ ansible_ssh_user }}"
+  become: true
+
+  
+

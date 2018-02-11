@@ -1,0 +1,84 @@
+- name: install marathon
+  apt:
+        name: marathon
+        update_cache: yes
+  become: true
+  become_user: root
+
+- name: for now we use this version of marathon
+  get_url:
+          url: "http://downloads.mesosphere.io/marathon/v0.8.0/marathon-0.8.0.tgz"
+          dest: /tmp/
+  when: hadoop_var == 'hadoop_master'
+  register: download_marathon
+  become: true
+  become_user: root
+
+- name: untar marathon tarball into local/lib
+  unarchive:
+          src: "/tmp/marathon-0.8.0.tgz"
+          dest: {{common.path_framwork}}
+          remote_src: yes
+          owner: "{{ansible_ssh_user}}"
+          group: "{{ ansible_ssh_user }}"
+  when: download_marathon | changed
+  become: true
+  become_user: root
+
+- name : Install marathon package
+  apt :
+          name : marathon
+  become: true
+  become_user: root
+
+- name: create marathon directory
+  file :
+          path: /etc/marathon
+          state: directory
+          mode: 0755
+          owner: "{{ansible_ssh_user}}"
+          group: "{{ansible_ssh_user}}"
+  become: true
+  become_user: root
+
+- name: create conf directory
+  file:
+          path: /etc/marathon/conf
+          state: directory
+          mode: 0755
+          owner: "{{ansible_ssh_user}}"
+          group: "{{ansible_ssh_user}}"
+  become: true
+  become_user: root
+
+- name: copy hostname to marathon
+  copy:
+        src: /etc/mesos-master/hostname 
+        dest: /etc/marathon/conf/hostname
+        remote_src: yes
+        # t'es un noob ici tu dois modifiter le directory de mesos
+        #owner: "{{ansible_ssh_user}}"
+        #group: "{{ansible_ssh_user}}"
+
+- name: copy zk_host to marathon
+  copy:
+        src: /etc/mesos/zk 
+        dest: /etc/marathon/conf/master
+        remote_src: yes
+  become: true
+  become_user: root
+
+- name: marathon zk set up
+  copy:
+        content: "{{zookeeper.zookeeper_url_marathon}}"
+        dest: /etc/marathon/conf/zk
+  become: true
+  become_user: root
+ 
+- name: copy file to run marathon from template
+  template: 
+        src: run.j2
+        dest: ~/run_marathon.txt
+        owner: "{{ ansible_ssh_user }}"
+        mode: 0755
+

@@ -1,0 +1,120 @@
+---
+
+- name: configuration bashrc 
+  lineinfile:
+    dest: /home/{{ ansible_ssh_user }}/.bashrc
+    line: "{{ item }}"
+    insertafter: EOF
+    state: present
+    owner: "{{ ansible_ssh_user }}"
+  with_items:
+    - "export ZOOKEEPER_HOME=/usr/local/lib/zookeeper-3.4.10"
+    - "export ZOOKEEPER_CONF_DIR=$ZOOKEEPER_HOME/conf"
+    - "export ZOOKEEPER_CLASSPATH=$ZOOKEEPER_CONF_DIR"
+    - "export PATH=$PATH:$ZOOKEEPER_HOME/bin"
+  become: true
+  become_user: root
+
+- name : export variable 
+  shell: . /home/{{ ansible_ssh_user }}/.bashrc
+  args:
+  executable: /bin/bash
+  become: true
+  become_user: root
+
+- name: Install zookeeper framework from tarbal
+  get_url:
+          url: "http://www.us.apache.org/dist/zookeeper/stable/{{ zookeeper.zookeeper_version_tar }}"
+          dest: /tmp/{{ zookeeper.zookeeper_version_tar }}
+  become: true
+  become_user: root
+  register: new_archive
+
+- name: Untar zookeeper tarball
+  unarchive:
+          src: "/tmp/{{ zookeeper.zookeeper_version_tar }}"
+          dest: "{{ common.path_framwork }}"
+          owner: "{{ ansible_ssh_user }}"
+          mode: 0755
+          copy: no
+  become: true
+  become_user: root
+
+- name: install openjdk java
+  apt:
+        name: openjdk-8-jdk
+        update_cache: yes
+  become: true
+  become_user: root
+
+- name: delete previous link to java binary
+  file:
+          path: "/usr/bin/java"
+          state: absent
+  become: true
+  become_user: root
+
+- name: create symlink for java version
+  file:
+        src: {{ java.installation_path }}
+        dest: /usr/bin/java
+        state: link
+  become: true
+  become_user: root
+
+- name: install openjdk java
+  apt:
+        name: openjdk-8-jdk
+        update_cache: yes
+  become: true
+  become_user: root
+
+- name: delete previous link to java binary
+  file:
+          path: "/usr/bin/java"
+          state: absent
+  become: true
+  become_user: root
+
+- name: create symlink for java version
+  file:
+        src: {{ java.installation_path }} 
+        dest: /usr/bin/java
+        state: link
+  become: true
+  become_user: root
+
+- name: create zookeeperid file
+  template: 
+        src: zoo_id.j2
+        dest: /usr/local/lib/{{ zookeeper.zook_version }}/conf/myid
+  become: true
+  become_user: root
+
+- name: create zookeeperconfig file
+  template: 
+        src: zoo.cfg.j2
+        dest: /usr/local/lib/{{ zookeeper.zook_version }}/conf/zoo.cfg
+  become: true
+  become_user: root
+
+- name: debug
+  debug:
+    var: "server.{{hostvars[inventory_hostname].zoo_id}}"
+
+- name: modify ip zookeeper
+  vars:
+      test: hostvars[inventory_hostname].zoo_id
+  replace: 
+        path: /usr/local/lib/{{ zookeeper.zook_version }}/conf/zoo.cfg
+        regexp: 'server.{{test}}'
+        replace: 'server.{{test}}=0.0.0.0:2888:3888'
+  become: true
+  become_user: root
+
+- name: create zookeeperconfig file
+  template:
+        src: run.j2
+        dest: /home/ubuntu/run.txt
+  become: true
+  become_user: root

@@ -1,0 +1,1 @@
+sudo mesos-master --advertise_ip=34.241.175.226 --work_dir=workdir log_dir=logdir --no-hostname_lookup --zk=zk://34.241.175.226:2181/mesos --quorum=1 

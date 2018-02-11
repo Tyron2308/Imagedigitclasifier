@@ -1,0 +1,45 @@
+---
+- set_fact: zookeeper_url="zk://{{ groups.zookeeper | join(':' + zookeeper.configuration.client_port + ',')}}:{{ zookeeper.configuration.client_port }}/mesos" hadoop_home={{common.path_framwork}}/{{ hadoop.hadoop_cloudera }}
+
+- name: debug
+  debug:
+    msg: "{{ zookeeper_url }}"
+
+- name: copy file to run mesos slave
+  template: 
+    src: run.j2 
+    dest: ~/run_slave.txt
+
+- name: Set ZooKeeper URL
+  copy:
+    content: "{{ zookeeper_url }}"
+    dest: /etc/mesos/zk
+    force: yes
+    mode: 0644 
+  become: true
+  become_user: root
+
+# disable mesos master  
+- name: Disable the Mesos master service
+  copy:
+    content: "manual"
+    dest: /etc/init/mesos-master.override
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: Set Mesos Slave ip
+  copy:
+    content: "{{ common.ip_address }}"
+    dest: /etc/mesos-slave/ip
+    mode: 0644
+  become: true
+  become_user: root
+
+- name : Set Mesos Slave hostname 
+  copy :
+    content: "{{ common.ip_address }}"
+    dest: /etc/mesos-slave/hostname
+    mode: 0644
+  become: true
+  become_user: root

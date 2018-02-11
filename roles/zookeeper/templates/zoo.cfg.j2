@@ -1,0 +1,8 @@
+tickTime={{zookeeper.tickTime }}
+dataDir=/var/lib/zookeeper/  
+clientPort={{ zookeeper.client_port }}  
+initLimit={{ zookeeper.configuration.initLimit }}
+syncLimit= {{ zookeeper.configuration.syncLimit }} 
+{% for host in groups['zookeeper'] %}
+server.{{ hostvars[host].zoo_id }}={{ hostvars[host].inventory_hostname }}:{{ zookeeper.configuration.leader_port }}:{{ zookeeper.configuration.election_port }}  
+{% endfor %}

@@ -1,0 +1,1 @@
+sudo mesos-slave --advertise_ip={{ common.ip_address }} --master={{ zookeeper_url }} --work_dir=/home/{{ansible_ssh_user}}/{{ mesos.configuration.workdir }} --log_dir=/home/{{ansible_ssh_user}}/{{ mesos.configuration.logdir }} --no-switch_user --hadoop_home={{hadoop_home}} --containerizers=docker,mesos --executor_registration_timeout=10mins 

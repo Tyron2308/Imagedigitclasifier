@@ -1,0 +1,9 @@
+# to run the mesos-master on the host 
+
+sudo mesos-master --advertise_ip={{common.ip_address}} --work_dir=/home/{{ansible_ssh_user}}/{{mesos.configuration.wordir}} log_dir=/home/{{ ansible_ssh_user }}/{{mesos.configuration.logdir }} --no-hostname_lookup --zk={{ zookeeper.configuration.url }} --quorum={{ mesos.configuration.quorum_count }}
+
+#if you want to make a quick test with mesos-master to see if everything run fine with a simple sleep. 
+mesos-execute --master={{common.ip_address}}:5050 --name="test@" --command="sleep 10"
+
+# in case the zookeeper is installed on the same host as the mesos-master
+sudo /usr/local/lib/{{zookeeper.zook_version}}/bin/zkServer.sh start-foreground

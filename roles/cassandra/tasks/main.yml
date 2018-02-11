@@ -1,0 +1,40 @@
+---
+- name : install cassandra debian source list file 
+  apt_repository :
+      repo: deb http://www.apache.org/dist/cassandra/debian 311x main"
+      state: present
+      filename: "cassandra"
+      update_cache: yes
+  become: true
+  become_user: root
+
+
+- name: add keysever
+  command: "{{ item }}"
+  with_items:
+    - "curl https://www.apache.org/dist/cassandra/KEYS | sudo apt-key add -"
+
+- name: install cassandra package
+  apt:
+      name: cassandra
+      update_cache: yes
+  become: true
+  become_user: root 
+
+- name: install pip
+  apt:
+      name: python-pip
+      update_cache: yes
+  become: true
+  become_user: root
+
+- name: install Python driver cassandra
+  command: sudo pip install --upgrade pip
+  become: true
+  become_user: root
+
+- name: install pdriver
+  command: pip install cassandra-driver
+  become: true
+  become_user: root
+

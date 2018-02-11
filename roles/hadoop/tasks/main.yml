@@ -1,0 +1,221 @@
+---
+- name : export environment variable
+  block:
+          - lineinfile:
+                dest: /home/{{ansible_ssh_user}}/.bashrc
+                line: "{{item}}"
+                insertafter: EOF
+                state: present
+                owner: "{{ ansible_ssh_user }}"
+            with_items: 
+                - "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64"
+                - "export MESOS_NATIVE_LIBRARY={{mesos.configuration.lib_location}}"
+                - "export HADOOP_HOME=/usr/local/lib/{{hadoop.hadoop_cloudera}}"
+                - "export PATH=$PATH:$HADOOP_HOME/sbin"
+                - "export PATH=$PATH:$HADOOP_HOME/bin"
+          - shell: . /home/{{ansible_ssh_user}}/.bashrc
+            args:
+                executable: /bin/bash
+  become: true
+  become_user: root
+
+- name: git clone hadoop-on-Mesos
+  git:
+          repo: 'https://github.com/mesos/hadoop.git'
+          dest: /usr/local/lib/hadoop
+          force: yes
+  register: hadoopmesos
+  become: true
+  become_user: root
+
+- name: install maven
+  apt:
+          name: maven
+          update_cache: yes
+  register: update_fail
+  ignore_errors: yes
+  become: true
+  become_user: root
+
+- name : in case update_fail
+  command: rm /etc/apt/sources.list.d/*
+  when: update_fail| failed
+  become: true
+  become_user: root
+
+- name: install hadoop-cloudera
+  get_url:
+          url: "http://archive.cloudera.com/cdh5/cdh/5/hadoop-2.5.0-cdh5.2.0.tar.gz"
+          dest: /tmp/{{hadoop.hadoop_cloudera}}.tar.gz
+  register: hadoop_installed
+  become: true
+  become_user: root
+  ignore_errors: true
+
+- name: in case hadoop_failed
+  file:
+          dest : /tmp/
+          state: absent
+  when: hadoop_installed|failed
+  become: true
+  become_user: root
+
+- name : untar hadoop tarball
+  unarchive:
+        src: "/tmp/hadoop-2.5.0-cdh5.2.0.tar.gz"
+        dest: "/usr/local/lib/"
+        copy: no
+        owner: "{{ ansible_ssh_user }}"
+  register: hadoop_untar
+  become: true
+  become_user: root
+ 
+- name: compile package mesos hadoop
+  command: mvn package
+  args:
+          chdir: "{{ common.path_framwork }}/hadoop"
+  register: success_compilation
+  become: true
+  become_user: root
+
+- name: copy jar from hadoop-mesos to hadoop cloudera
+  file: 
+      src: "{{common.path_framwork}}/hadoop/target/hadoop-mesos-0.1.0.jar"
+      dest: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/share/hadoop/common/lib"
+  become: true
+  become_user: root
+
+- name: add JAVA_HOME in hadoop-daemon.sh
+  lineinfile:
+        dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/bin-mapreduce1/hadoop-daemon.sh
+        line: "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64"
+        insertafter: '^usage='
+  become: true
+  become_user: root
+
+- name: add JAVA_HOME in hadoop-env.sh
+  lineinfile:
+        dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/hadoop-env.sh
+        line: "export JAVA_HOME=/usr/lib/jvm/java-1.8.0-openjdk-amd64"
+        insertafter: '#export=JAVA_HOME'
+  become: true
+  become_user: root 
+
+
+- name: set up configuration hadoop
+  block:
+        - name: copy binaire de bin into bin-mapreduce1
+          shell: mv {{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/bin/* {{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/bin-mapreduce1
+          when: hadoop_untar | changed
+          ignore_errors: yes
+        
+        - name: copy log4j.prep from hadoop to hadoop-binmapreduce 
+          copy:
+                remote_src: yes
+                src: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop/log4j.properties"
+                dest: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/"
+
+        - name: delete folder bin
+          file:
+                path: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/bin"
+                state: absent
+       
+        - name: create a new symlink bin
+          file:
+                src: "{{common.path_framwork }}/{{ hadoop.hadoop_cloudera }}/bin-mapreduce1"
+                dest: "{{common.path_framwork }}/{{ hadoop.hadoop_cloudera }}/bin"
+                state: link
+                force: yes
+
+        - name: delete previous hadoop directory 
+          file:
+                path: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop"
+                state: absent
+
+        - name: modify slave configuration file hadoop 
+          lineinfile:
+                dest: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/slaves"
+                regexp: "localhost"
+                state: absent
+          when: hadoop_var == 'hadoop_master'
+
+        - name: modify master configuration file hadoop 
+          lineinfile:
+                dest: "{{common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/slaves"
+                line: "{{ hostvars[item].slave_id }}"
+                insertafter: EOF
+                state: present
+                owner: "{{ ansible_ssh_user }}"
+          with_items:
+                  - "{{ groups['mesos_slaves'] }}"
+          when: hadoop_var == 'hadoop_master'
+
+        - name : create symlink from hadoop-mapreduce
+          file:
+               src: "{{ common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1"
+               dest: "{{ common.path_framwork}}/{{hadoop.hadoop_cloudera}}/etc/hadoop"
+               state: link
+               force: yes
+  when: success_compilation | success
+  become: true
+  become_user: root
+
+- name: create core-site file
+  template: 
+        src: core-site.xml.j2
+        dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/core-site.xml
+  become: true
+  become_user: root
+
+- name: create hdfs-site file
+  template: 
+        src: hdfs-site.xml.j2 
+        dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/hdfs-site.xml
+  become: true
+  become_user: root
+
+- name: create map-red file
+  template: src=mapred-site.xml2.j2 dest=/usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop-mapreduce1/mapred-site.xml
+  become: true
+  become_user: root
+
+- name: modify slave file in master for configuring hadoop 
+  replace:
+    dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop/slaves
+    regexp: 'localhost'
+    replace: "{{hostvars[item].inventory_hostname}} {{hostvars[item].slave_id}}"
+  with_items: 
+        - "{{ groups['mesos_slaves']}}"
+  become: true
+  become_user: root
+  when: hadoop_var == 'hadoop_master'
+
+- name: modify master file in slave for configuring hadoop datanode
+  replace:
+    dest: /usr/local/lib/{{hadoop.hadoop_cloudera}}/etc/hadoop/slaves
+    regexp: 'localhost'
+    replace: "{{hostvars[item].inventory_hostname}} {{hostvars[item].master_id}}"
+  with_items: 
+        - "{{ groups['mesos_masters'][0]}}"
+  become: true
+  become_user: root
+  when: hadoop_var == 'hadoop_slave'
+
+
+- name: Creates directory namenode
+  file:
+    path: /home/ubuntu/hadoopinfra/hdfs/namenode
+    state: directory
+    owner: "{{ ansible_ssh_user }}"
+    group: "{{ ansible_ssh_user }}"
+    mode: 0775
+
+- name: Creates directory datanode
+  file:
+    path: /home/ubuntu/hadoopinfra/hdfs/datanode
+    state: directory
+    owner: "{{ ansible_ssh_user }}"
+    group: "{{ ansible_ssh_user }}"
+    mode: 0775
+
+ 

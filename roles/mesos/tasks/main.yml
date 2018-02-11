@@ -1,0 +1,93 @@
+---
+- name: install openjdk java 
+  apt: 
+    name: openjdk-8-jdk
+    update_cache: yes
+  become: true
+  become_user: root
+
+- name: delete previous link to java binary
+  file:
+          path: "/usr/bin/java"
+          state: absent
+  become: true
+  become_user: root
+
+- name: create symlink for java version
+  file:
+    src: "{{ java.installation_path }}"
+    dest: /usr/bin/java
+    state: link
+  become: true
+  become_user: root
+
+- name: create alive heartbeat
+  template:
+    src: config
+    dest: ~/.ssh/
+    owner: "{{ ansible_ssh_user }}"
+  become: true
+  become_user: root 
+
+- name:  add in host  
+  lineinfile:
+          line: " {{groups['mesos_masters'][0]}}   master" 
+          insertafter: EOF
+          dest: /etc/hosts
+  when: hadoop_var == 'hadoop_slave'
+  become: true
+  become_user: root
+
+- name: set /etc/hosts
+  lineinfile: 
+        dest: /etc/hosts
+        regexp: 'localhost'
+        line: "{{hostvars[item].inventory_hostname }} {{hostvars[item].slave_id}}"
+  with_items:
+        - "{{ groups['mesos_slaves'] }}"
+  when: hadoop_var == 'hadoop_master'
+  become: true
+  become_user: root
+
+- name: add an apt-key from server
+  apt_key:
+        url: https://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0xE56151BF
+        state: present
+  ignore_errors: yes
+  become: true
+  become_user: root
+
+- name: determine Linux distribution distributor
+  shell: lsb_relase -is | tr '[:upper:]' '[:lower:]'
+  register: release_distributor
+
+- name: determine linux distribution codename
+  command: lsb_release -cs
+  register: release_codename
+
+- name: add mesos source list deb
+  apt_repository:
+        repo: deb http://repos.mesosphere.io/ubuntu xenial main
+        state: present
+        filename: "mesosphere"
+        update_cache: yes
+  become: true
+  become_user: root
+
+- name: Install mesos package 
+  apt: 
+        name: mesos 
+        state: present
+        allow_unauthenticated: yes
+        force: yes 
+  become: true 
+  become_user: root
+
+- name: Set Mesos Master Cluster name 
+  copy: 
+    content: "{{ mesos.configuration.cluster_name }}"
+    dest: /etc/mesos-master/cluster
+    mode: 0644
+    owner: "{{ ansible_ssh_user }}"
+  become: true
+  become_user: root

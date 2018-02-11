@@ -1,0 +1,20 @@
+---
+
+- name: install chronos
+  apt:
+          name: chronos
+  become: true
+  become_user: root
+
+- name: 
+  apt:
+          update_cache: yes
+  become: true
+  become_true: root
+
+- name: run systemctl to activate service
+  systemd:
+          name: chronos
+          state: started
+  become: true
+  become_true: root

@@ -1,0 +1,43 @@
+---
+
+- name: Install elk package
+  apt_key:
+      url: https://packages.elastic.co/GPC-KEY-elasticsearch
+      state: present
+  become: true
+  become_user: root
+
+- name : add elasticsearch deb
+  apt_repository:
+    repo: deb http:/packages.elastic.co/elasticsearch/2.x/debian stable main
+    state: present
+    filename: "elasticsearch=2.x"
+    update_cache: yes
+  become: true
+  become_user: root
+
+- name: 
+  apt:
+      name: elasticsearch
+      update_cache: yes
+  become: true
+  become_user: root
+
+- name: edit configuration file 
+  lineinfile: 
+    dest: /etc/elasticsearch/elasticsearch.yml
+    regexp: "network.host:"
+    line: "network.host: {{ inventory_hostname }}"
+    state: present
+
+- name: restart elasticsearch
+  service:
+    name: elacsticsearch
+    state: started
+    enabled: yes
+  become: true
+  become_user: root
+
+
+
+

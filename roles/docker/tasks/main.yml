@@ -1,0 +1,55 @@
+---
+
+- name: create containerizers file
+  copy:
+          content: "'docker, mesos'"
+          dest: /etc/mesos-slave/containerizers
+          group: "{{ansible_ssh_user}}"
+          owner:  "{{ansible_ssh_user}}"
+  become: true
+  become_user: root
+
+- name: increaswe the executor timeout to account for the potential delay of pulling docker image
+  copy:
+         content: "'10mins'"
+         dest: /etc/mesos-slave/executor_registration_timeout
+         group: "{{ansible_ssh_user}}"
+         owner:  "{{ansible_ssh_user}}"
+  become: true
+  become_user: root 
+
+- name: install docker dependencies
+  apt:
+          name: apt-transport-https
+          update_cache: yes
+  become: true
+  become_user: root
+
+- name: add apt-key server docker
+  apt_key:
+          url: "https://keyserver.ubuntu.com/pks/lookup?op=get&fingerprint=on&search=0xA88D21E9"
+          state: present
+  become: true
+  become_user: root
+
+- name: add docker source list deb
+  apt_repository:
+          repo: deb https://get.docker.com/ubuntu docker main
+          state: present
+          filename: "docker"
+          update_cache: yes
+  become: true
+  become_user: root
+
+- name: add docker engine packet
+  apt:
+          name: docker.io
+          update_cache: yes
+  become: true
+  become_user: root
+
+- name: start docker service
+  service:
+          name: docker
+          state: started
+  

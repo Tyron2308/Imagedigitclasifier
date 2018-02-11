@@ -1,0 +1,86 @@
+---
+
+common:
+  path_framwork: /usr/local/lib
+  ip_address: "{{ inventory_hostname }}"
+  zookeeper-port : 2181 
+
+mesos:
+  mesos_version: mesos-1.4.0
+  configuration: 
+    cluster_name: "clustersisilafamille"
+    quorum_count: 2
+    logdir: logdir
+    workdir: workdir
+    lib_location: /usr/local/lib/libmesos.so
+    mesos_master_port: 5050
+    mesos_slave_port: 5051
+
+spark:
+  spark_package: spark-2.1.0-bin-hadoop2.7
+  executable_binary: spark.tar
+  configuration:
+    kryoserializer: 2047
+    driver-memory: 5g
+    driver-port: 8008
+    executor-port: 8009
+    block-port: 8010
+    executor-memory: 4g
+    logging: true
+    sparklogdir: sparklog
+
+marathon:
+  marathon_version: marathon-0.8.0
+
+kafka:
+  version: 0.11.0.2
+  scala_version: 2.11
+  download_mirror: http://apache.crihan.fr/dist/kafka
+  configuration:
+    port: 8100
+    data_dir: /home/{{ansible_ssh_user}}/kafka-datadir
+    topic_dir : /home/{{ansible_ssh_user}}/kafka-topic
+    log_dir: /home/{{ansible_ssh_user}}/kafka-logdir
+    network_threads: 3
+    disk_threads: 8
+    num_partitions: 3
+    replication_factor: 3
+    so_snd_buff_bytes: 102400
+    so_rcv_buff_bytes: 102400
+    so_request_max_bytes: 104857600
+    data_dir_recovery_threads: 1
+    log_retention_hours: 24
+    log_retention_bytes: 1073741824
+    log_segment_bytes: 1073741824
+    log_retention_check_interval: 300000
+    log_cleaner_enable: false
+    zk_connection_timeout: 60000
+
+zookeeper:
+  zookeeper_version_tar: zookeeper-3.4.10.tar.gz
+  zook_version: zookeeper-3.4.10
+  configuration:
+    leader_port: "2888"
+    urlbis: "zk://{{groups.zookeeper | join(':' + '2181' + ',') }}:{{ '2181' }}/mesos"
+    client_port: "2181"
+    election_port: "3888"
+    tickTime: 2000
+    initlimit: 5
+    syncLimit: 2
+
+hadoop:
+  hadoop_version: hadoop-2.7.4
+  hadoop_cloudera: hadoop-2.5.0-cdh5.2.0
+  configuration:
+    port_master: "8088"
+    replication_hadoop: 3
+    port_mapred: "8089"
+    name_dir: "file:///home/ubuntu/hadoopinfra/hdfs/namenode"
+    data_dir: "file:///homem/ubuntu/hadoopinfra/hdfs/datanode"
+    hdfs_append: true
+    broken_append: true
+
+
+java : 
+  installation_path: /usr/lib/jvm/java-1.8.0-openjdk-amd64/bin/java
+

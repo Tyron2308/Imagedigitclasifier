@@ -1,0 +1,8 @@
+[Unit]
+Description=Mesos Master Service
+
+[Service]
+ExecStart=/usr/local/sbin/mesos-master --advertise_ip={{common.ip_address}} --work_dir=/home/{{ansible_ssh_user}}/{{mesos.workdir}} --log_dir=/home/{{ansible_ssh_user}}/{{mesos.logdir}} --zk={{zookeeper.configuration.url}} --quorum={{mesos.quorum_count}}  --cluster={{mesos.cluster_name}}
+
+[Install]
+WantedBy=multi-user.target

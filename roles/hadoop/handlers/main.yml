@@ -1,0 +1,23 @@
+---
+
+- name: handler debug
+  debug:
+        msg: "PRINT"
+
+- name: start datanode
+  shell: hadoop-daemon.sh start datanode
+
+- name: start namenode
+  shell: hadoop-daemon.sh start namenode
+
+- name: format namenode
+  shell: hadoop namenode -format
+
+- name: package hadoop for slave
+  block:
+          - shell: hadoop dfs -put /tmp/{{hadoop_cloudera}}.tar.gz /{{hadoop_cloudera}}.tar.gz
+          - shell: hadoop dfs -chmod 777 /{{hadoop_cloudera}}.tar.gz
+- name: start jobtracker
+  shell: hadoop jobtracker
+
+

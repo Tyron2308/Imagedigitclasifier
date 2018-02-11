@@ -1,0 +1,56 @@
+- set_fact: zookeeper_url="zk://{{ group.zookeeper | join(':' + zookeeper.configuration.client_port + ',') }}:{{zookeeper.configuration.client_port }}/mesos"
+
+- name : debug fact
+  debug:
+    name: {{zookeeper_url}}
+
+- name: Set ZooKeeper URL # used for leader election amongst masters
+  copy:
+    content: "{{ zookeeper.configuration.url }}"
+    dest: /etc/mesos/zk
+    mode: 0644
+  become: true
+  become_user: root
+
+# Tasks for Master nodes
+- name: Disable the Mesos Slave service
+  copy:
+    content: "manual"
+    dest: /etc/init/mesos-slave.override
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: Set Mesos Master hostname
+  copy:
+    content: "{{ common.ip_address }}"
+    dest: /etc/mesos-master/hostname
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: Set Mesos Master ip
+  copy:
+    content: "{{ common.ip_address }}"
+    dest: /etc/mesos-master/ip
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: Set Mesos Master quorum count
+  copy:
+    content: "{{ mesos.configuration.quorum_count}}"
+    dest: /etc/mesos-master/quorum
+    mode: 0644
+  become: true
+  become_user: root
+
+- name: copy file run installation
+  template: src=run.j2 dest=~/run_master.txt
+
+- name: create service
+  template:
+    src: mesos-master.service.j2
+    dest: /etc/systemd/mesos-master.service
+  become: true
+  become_user: root 

@@ -1,0 +1,45 @@
+---
+
+- hosts: zookeeper
+  roles:
+    #      - zookeeper
+          
+- hosts: mesos_masters
+  vars:
+          hadoop_var: 'hadoop_master'
+  tags: ['hadoop_master'] 
+  roles:
+    #           - ssh
+    #      - mesos
+    #      - mesos-master
+    #      - hadoop 
+    #      - spark
+    #      - marathon
+    #      - chronos
+
+- hosts: mesos_slaves
+  vars:
+          hadoop_var: 'hadoop_slave' 
+  tags: ['hadoop_slave']
+  roles:
+    #- ssh
+    #      - mesos
+    #      - mesos-slave
+    #      - hadoop
+    #      - spark
+    #      - docker
+           - cassandra
+
+- hosts: kafka 
+  vars:
+          hadoop_var: 'hadoop_slave' 
+  tags: ['hadoop_slave']
+  roles:
+    #         - ssh
+    #     - mesos
+    #     - mesos-slave
+    #     - hadoop
+    #     - spark
+    #         - kafka
+         - cassandra
+           #         - docker

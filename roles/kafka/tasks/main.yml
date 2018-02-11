@@ -1,0 +1,89 @@
+---
+- name: debug
+  debug:
+    msg: "{{common.path_framwork}}"
+
+- name: debug2
+  debug: 
+    msg: "{{ java.installation_path }}"
+
+- set_fact: kafka_package_name_tar="kafka_{{ kafka.scala_version }}-{{ kafka.version }}.tgz" kafka_application_path={{ common.path_framwork }}/kafka_{{ kafka.scala_version }}-{{ kafka.version }} kafka_package_name=kafka_{{ kafka.scala_version }}-{{ kafka.version }} 
+
+- name: check kafka package
+  stat: 
+        path: "{{ common.path_framwork }}/{{ kafka_package_name }}"
+  register: kafka_package_exists
+
+- name: download kafka tar if not downloaded
+  get_url:
+        url: "{{ kafka.download_mirror }}/{{ kafka.version }}/{{ kafka_package_name_tar }}" 
+        dest: "/tmp/" 
+  register: downloaded
+  when: not kafka_package_exists.stat.exists
+
+- name: unarchive kafka package
+  unarchive: 
+        src: "/tmp/{{ kafka_package_name_tar }}"
+        dest: "{{ common.path_framwork }}/" 
+        copy: no
+        group: "{{ ansible_ssh_user }}"
+        owner: "{{ ansible_ssh_user }}"
+        mode: 0755
+  register: installed
+  when: downloaded | success and not kafka_package_exists.stat.exists 
+  become: true
+  become_user: root
+
+
+- name: delete package downloaded if needed
+  file: 
+        path: "/tmp/{{ kafka_package_name_tar }}"
+        state: absent
+  when: installed | success 
+
+- name: set kafka data dir
+  file: 
+        path: "{{ kafka.configuration.data_dir }}"
+        state: directory
+        owner: "{{ ansible_ssh_user }}"
+        group: "{{ ansible_ssh_user }}"
+
+
+- name: set kafka loggers dir
+  file:   
+        path: "{{ kafka.configuration.log_dir }}"
+        state:  directory
+        owner: "{{ ansible_ssh_user }}"
+        group: "{{ ansible_ssh_user }}"
+
+- name: set kafka log topic dirs
+  file: 
+        path: "{{ kafka.configuration.topic_dir }}" 
+        state: directory 
+        owner:  "{{ ansible_ssh_user }}" 
+        group: "{{ ansible_ssh_user }}" 
+
+- name: set kafka configuration file 
+  template: 
+        src: templates/kafka.configuration.j2 
+        dest: "{{ kafka_application_path }}/config/server.properties"
+        force: yes
+  become: true
+  become_user: root
+
+- name: start kafka
+  template: 
+        src: kafka.systemd.j2
+        dest: /etc/systemd/system/kafka.service 
+        owner: root
+        group: root
+        mode: 644 
+        force: yes
+  become: true
+  become_user: root
+
+- name: reload systemd daemon
+  shell: "systemctl daemon-reload"
+  become: true
+  become_user: root
+
