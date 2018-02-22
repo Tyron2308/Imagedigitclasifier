@@ -1,0 +1,33 @@
+---
+
+- name: Install kibana
+  apt_repository:
+    repo: deb http://packages.elastic.co/kibana/4.5/debian stable main
+    update_cache: yes
+  become: true
+  become_user: root
+
+- name: install kibana apt
+  apt:
+    name: kibana
+    update_cache: yes
+  become: true
+  become_user: root
+
+- name: replace in configuration file 
+  lineinfile:
+    dest: /opt/kibana/config/kibana.yml
+    line: "server.host: {{inventory_hostname}}"
+    state: present
+    owner: "{{ ansible_ssh_user }}"
+    group: "{{ ansible_ssh_user }}"
+  become: true
+  become_user: root
+
+- name: restart kibanna
+  service:
+    name: kibana
+    state: started
+    enabled: yes
+  become: true
+  become_user: true
