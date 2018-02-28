@@ -1,0 +1,9 @@
+Manifest-Version: 1.0
+Implementation-Title: scala-kafka-client
+Implementation-Version: 1.0.0
+Specification-Vendor: net.cakesolutions
+Specification-Title: scala-kafka-client
+Implementation-Vendor-Id: net.cakesolutions
+Specification-Version: 1.0.0
+Implementation-Vendor: net.cakesolutions
+
